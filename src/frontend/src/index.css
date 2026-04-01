@@ -1,0 +1,116 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: "Playfair Display";
+  src: url("/assets/fonts/PlayfairDisplay.woff2") format("woff2");
+  font-weight: 400 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  src: url("/assets/fonts/PlusJakartaSans.woff2") format("woff2");
+  font-weight: 300 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@layer base {
+  :root {
+    --radius: 0.75rem;
+
+    /* Dark navy base: #0f0f1a */
+    --background: 0.09 0.018 285;
+    /* Near-white text */
+    --foreground: 0.95 0.012 285;
+    /* Card surface: #16162a */
+    --card: 0.13 0.025 285;
+    --card-foreground: 0.95 0.012 285;
+    --popover: 0.13 0.025 285;
+    --popover-foreground: 0.95 0.012 285;
+    /* Primary purple: #7c3aed */
+    --primary: 0.5 0.24 290;
+    --primary-foreground: 0.98 0.005 285;
+    /* Secondary: slightly lighter dark */
+    --secondary: 0.18 0.03 285;
+    --secondary-foreground: 0.85 0.015 285;
+    /* Muted surfaces */
+    --muted: 0.2 0.03 285;
+    --muted-foreground: 0.6 0.04 285;
+    /* Gold accent: #f59e0b */
+    --accent: 0.76 0.16 82;
+    --accent-foreground: 0.1 0.01 285;
+    --destructive: 0.577 0.245 27.325;
+    --destructive-foreground: 0.985 0 0;
+    /* Border: #2a2a4a */
+    --border: 0.24 0.04 285;
+    --input: 0.24 0.04 285;
+    --ring: 0.5 0.24 290;
+    --chart-1: 0.5 0.24 290;
+    --chart-2: 0.76 0.16 82;
+    --chart-3: 0.6 0.18 195;
+    --chart-4: 0.65 0.2 145;
+    --chart-5: 0.7 0.15 345;
+    --sidebar: 0.12 0.022 285;
+    --sidebar-foreground: 0.95 0.012 285;
+    --sidebar-primary: 0.5 0.24 290;
+    --sidebar-primary-foreground: 0.98 0.005 285;
+    --sidebar-accent: 0.18 0.03 285;
+    --sidebar-accent-foreground: 0.85 0.015 285;
+    --sidebar-border: 0.24 0.04 285;
+    --sidebar-ring: 0.5 0.24 290;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html,
+  body,
+  #root {
+    background-color: #0f0f1a;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+  }
+}
+
+/* Before/After slider */
+.comparison-slider {
+  position: relative;
+  overflow: hidden;
+  cursor: col-resize;
+  user-select: none;
+}
+
+.comparison-slider .slider-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: white;
+  cursor: col-resize;
+  transform: translateX(-50%);
+  z-index: 10;
+}
+
+.comparison-slider .slider-circle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 40px;
+  height: 40px;
+  background: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  z-index: 11;
+}
