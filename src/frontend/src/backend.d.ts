@@ -7,104 +7,56 @@ export interface None {
     __kind__: "None";
 }
 export type Option<T> = Some<T> | None;
-export interface TransformationOutput {
-    status: bigint;
-    body: Uint8Array;
-    headers: Array<http_header>;
-}
-export type Time = bigint;
-export interface CustomTheme {
-    id: string;
-    name: string;
-    createdAt: Time;
-    prompt: string;
-}
-export interface SubscriptionInfo {
-    photosUsed: bigint;
-    plan?: SubscriptionPlan;
-    videoLimit: bigint;
-    videosUsed: bigint;
-    photoLimit: bigint;
-}
-export interface http_header {
-    value: string;
-    name: string;
-}
-export interface http_request_result {
-    status: bigint;
-    body: Uint8Array;
-    headers: Array<http_header>;
-}
-export interface Design {
-    style: string;
-    timestamp: Time;
-    roomType: string;
-}
-export interface ShoppingItem {
-    productName: string;
-    currency: string;
-    quantity: bigint;
-    priceInCents: bigint;
-    productDescription: string;
-}
-export interface TransformationInput {
-    context: Uint8Array;
-    response: http_request_result;
-}
-export type StripeSessionStatus = {
-    __kind__: "completed";
-    completed: {
-        userPrincipal?: string;
-        response: string;
-    };
-} | {
-    __kind__: "failed";
-    failed: {
-        error: string;
-    };
-};
-export interface StripeConfiguration {
-    allowedCountries: Array<string>;
-    secretKey: string;
-}
+
+export type SubscriptionPlan =
+  | { Starter: null }
+  | { Basic: null }
+  | { Growth: null }
+  | { Pro: null }
+  | { Max: null };
+
 export interface UserProfile {
-    name: string;
+  name: string;
 }
-export enum SubscriptionPlan {
-    Max = "Max",
-    Pro = "Pro",
-    Starter = "Starter",
-    Basic = "Basic",
-    Growth = "Growth"
+
+export interface SubscriptionInfo {
+  plan: [] | [SubscriptionPlan];
+  photosUsed: bigint;
+  videosUsed: bigint;
+  photoLimit: bigint;
+  videoLimit: bigint;
 }
-export enum UserRole {
-    admin = "admin",
-    user = "user",
-    guest = "guest"
+
+export interface CustomTheme {
+  id: string;
+  name: string;
+  prompt: string;
+  createdAt: bigint;
 }
+
+export interface Design {
+  roomType: string;
+  style: string;
+  timestamp: bigint;
+}
+
 export interface backendInterface {
-    addCustomTheme(name: string, prompt: string): Promise<string>;
-    addDesign(roomType: string, style: string): Promise<void>;
-    assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
-    claimRazorpayPayment(paymentId: string, planId: string): Promise<void>;
-    createCheckoutSession(items: Array<ShoppingItem>, successUrl: string, cancelUrl: string): Promise<string>;
-    deleteCustomTheme(themeId: string): Promise<boolean>;
-    getAllDesigns(): Promise<Array<Design>>;
-    getCallerUserProfile(): Promise<UserProfile | null>;
-    getCallerUserRole(): Promise<UserRole>;
-    getDesignHistorySorted(): Promise<Array<Design>>;
-    getMyCustomThemes(): Promise<Array<CustomTheme>>;
-    getMySubscription(): Promise<SubscriptionInfo>;
-    getPuterToken(): Promise<string | null>;
-    getStripeSessionStatus(sessionId: string): Promise<StripeSessionStatus>;
-    getUserProfile(user: Principal): Promise<UserProfile | null>;
-    isCallerAdmin(): Promise<boolean>;
-    isStripeConfigured(): Promise<boolean>;
-    recordPhotoUsage(): Promise<void>;
-    recordVideoUsage(): Promise<void>;
-    saveCallerUserProfile(profile: UserProfile): Promise<void>;
-    setPuterToken(token: string): Promise<void>;
-    setStripeConfiguration(config: StripeConfiguration): Promise<void>;
-    setUserPlan(user: Principal, plan: SubscriptionPlan): Promise<void>;
-    transform(input: TransformationInput): Promise<TransformationOutput>;
+  _initializeAccessControlWithSecret(secret: string): Promise<void>;
+  selfRegister(): Promise<void>;
+  getCallerUserProfile(): Promise<[] | [UserProfile]>;
+  saveCallerUserProfile(profile: UserProfile): Promise<void>;
+  getMySubscription(): Promise<SubscriptionInfo>;
+  claimRazorpayPayment(paymentId: string, planId: string): Promise<void>;
+  setUserPlan(user: Principal, plan: SubscriptionPlan): Promise<void>;
+  recordPhotoUsage(): Promise<void>;
+  recordVideoUsage(): Promise<void>;
+  isStripeConfigured(): Promise<boolean>;
+  addDesign(roomType: string, style: string): Promise<void>;
+  getAllDesigns(): Promise<Design[]>;
+  getDesignHistorySorted(): Promise<Design[]>;
+  getPuterToken(): Promise<[] | [string]>;
+  setPuterToken(token: string): Promise<void>;
+  addCustomTheme(name: string, prompt: string): Promise<string>;
+  getMyCustomThemes(): Promise<CustomTheme[]>;
+  deleteCustomTheme(themeId: string): Promise<boolean>;
 }

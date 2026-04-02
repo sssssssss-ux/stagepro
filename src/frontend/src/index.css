@@ -3,14 +3,6 @@
 @tailwind utilities;
 
 @font-face {
-  font-family: "Playfair Display";
-  src: url("/assets/fonts/PlayfairDisplay.woff2") format("woff2");
-  font-weight: 400 800;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
   font-family: "Plus Jakarta Sans";
   src: url("/assets/fonts/PlusJakartaSans.woff2") format("woff2");
   font-weight: 300 700;
@@ -20,67 +12,67 @@
 
 @layer base {
   :root {
-    --radius: 0.75rem;
+    --radius: 0.5rem;
 
-    /* Dark navy base: #0f0f1a */
-    --background: 0.09 0.018 285;
-    /* Near-white text */
-    --foreground: 0.95 0.012 285;
-    /* Card surface: #16162a */
-    --card: 0.13 0.025 285;
-    --card-foreground: 0.95 0.012 285;
-    --popover: 0.13 0.025 285;
-    --popover-foreground: 0.95 0.012 285;
-    /* Primary purple: #7c3aed */
-    --primary: 0.5 0.24 290;
-    --primary-foreground: 0.98 0.005 285;
-    /* Secondary: slightly lighter dark */
-    --secondary: 0.18 0.03 285;
-    --secondary-foreground: 0.85 0.015 285;
-    /* Muted surfaces */
-    --muted: 0.2 0.03 285;
-    --muted-foreground: 0.6 0.04 285;
-    /* Gold accent: #f59e0b */
-    --accent: 0.76 0.16 82;
-    --accent-foreground: 0.1 0.01 285;
+    /* Warm cream background: #F3F0E6 */
+    --background: 0.949 0.012 87.5;
+    /* Near-black heading: #111111 */
+    --foreground: 0.14 0 0;
+    /* Cards/surfaces: #FAF8F1 */
+    --card: 0.972 0.009 87.5;
+    --card-foreground: 0.14 0 0;
+    --popover: 0.972 0.009 87.5;
+    --popover-foreground: 0.14 0 0;
+    /* Primary = sage green: #6F9D79 */
+    --primary: 0.62 0.085 147;
+    /* Button text on green: #F7F7F5 */
+    --primary-foreground: 0.975 0.004 87.5;
+    /* Secondary: lighter cream */
+    --secondary: 0.93 0.015 87.5;
+    --secondary-foreground: 0.14 0 0;
+    /* Muted: #EEE7DA */
+    --muted: 0.92 0.018 87.5;
+    /* Muted text: #6F6F6F */
+    --muted-foreground: 0.52 0 0;
+    --accent: 0.62 0.085 147;
+    --accent-foreground: 0.975 0.004 87.5;
     --destructive: 0.577 0.245 27.325;
     --destructive-foreground: 0.985 0 0;
-    /* Border: #2a2a4a */
-    --border: 0.24 0.04 285;
-    --input: 0.24 0.04 285;
-    --ring: 0.5 0.24 290;
-    --chart-1: 0.5 0.24 290;
-    --chart-2: 0.76 0.16 82;
-    --chart-3: 0.6 0.18 195;
-    --chart-4: 0.65 0.2 145;
-    --chart-5: 0.7 0.15 345;
-    --sidebar: 0.12 0.022 285;
-    --sidebar-foreground: 0.95 0.012 285;
-    --sidebar-primary: 0.5 0.24 290;
-    --sidebar-primary-foreground: 0.98 0.005 285;
-    --sidebar-accent: 0.18 0.03 285;
-    --sidebar-accent-foreground: 0.85 0.015 285;
-    --sidebar-border: 0.24 0.04 285;
-    --sidebar-ring: 0.5 0.24 290;
+    /* Dividers: #DDD6C8 */
+    --border: 0.875 0.018 87.5;
+    --input: 0.875 0.018 87.5;
+    --ring: 0.62 0.085 147;
+    --chart-1: 0.646 0.222 41.116;
+    --chart-2: 0.6 0.118 184.704;
+    --chart-3: 0.398 0.07 227.392;
+    --chart-4: 0.828 0.189 84.429;
+    --chart-5: 0.769 0.188 70.08;
+    --sidebar: 0.972 0.009 87.5;
+    --sidebar-foreground: 0.14 0 0;
+    --sidebar-primary: 0.62 0.085 147;
+    --sidebar-primary-foreground: 0.975 0.004 87.5;
+    --sidebar-accent: 0.93 0.015 87.5;
+    --sidebar-accent-foreground: 0.14 0 0;
+    --sidebar-border: 0.875 0.018 87.5;
+    --sidebar-ring: 0.62 0.085 147;
+
+    /* Custom tokens */
+    --mockup-frame: #1e2528;
+    --footer-bg: #1f2a2e;
+    --footer-text: #d7dadb;
   }
 
   * {
     @apply border-border;
   }
 
-  html,
-  body,
-  #root {
-    background-color: #0f0f1a;
-  }
-
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
     font-family: "Plus Jakarta Sans", system-ui, sans-serif;
   }
 }
 
-/* Before/After slider */
+/* Comparison slider styles */
 .comparison-slider {
   position: relative;
   overflow: hidden;
@@ -111,6 +103,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   z-index: 11;
 }

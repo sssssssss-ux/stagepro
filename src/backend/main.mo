@@ -38,7 +38,7 @@ actor {
   };
 
   public type SubscriptionInfo = {
-    plan : ?SubscriptionPlan;  // null = free tier (1 photo)
+    plan : ?SubscriptionPlan;
     photosUsed : Nat;
     videosUsed : Nat;
     photoLimit : Nat;
@@ -50,22 +50,6 @@ actor {
     name : Text;
     prompt : Text;
     createdAt : Time.Time;
-  };
-
-  public type PayResponse = {
-    success : Text;
-    razorpayOrderId : Text;
-  };
-
-  public type StripePaymentRequest = {
-    #initialize : { sessionId : Text };
-    #status : { paymentId : Text };
-  };
-
-  public type StripeStatus = {
-    #processing : Text;
-    #failed : Text;
-    #completed : Text;
   };
 
   public type Design = {
@@ -80,25 +64,14 @@ actor {
     };
   };
 
-  module CustomTheme {
-    public func compare(theme1 : CustomTheme, theme2 : CustomTheme) : Order.Order {
-      Text.compare(theme1.id, theme2.id);
-    };
-  };
-
-  // STABLE STORAGE - persists across all upgrades and redeployments
   let userProfiles = Map.empty<Principal, UserProfile>();
   let userSubscriptions = Map.empty<Principal, SubscriptionPlan>();
   let userUsage = Map.empty<Principal, UsageData>();
   let designs = List.empty<Design>();
-  // Retain for stable variable compatibility (was used by Stripe)
   var stripeConfiguration : ?Stripe.StripeConfiguration = null;
-  // Track claimed Razorpay payment IDs to prevent duplicate claims
   let claimedPayments = Map.empty<Text, Principal>();
-  // STABLE: persistent mapping of user-specific CustomThemes
   let userCustomThemes = Map.empty<Principal, [CustomTheme]>();
-  // STABLE: persistent Puter API token
-  var puterToken : ?Text = null;
+  var puterToken : ?Text = ?"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0IjoiZ3VpIiwidiI6IjAuMC4wIiwidSI6Ii85QzZVejRoU0FDREtDYjZxS2ZPWEE9PSIsInV1IjoiYUx1dW9ZOGpST1dybnN6OUZlVFV5UT09IiwiaWF0IjoxNzc0ODY5NDE0fQ.YNFIUAlSo67eurrYl7VrrVgDRW_tw14OuIfoAvEIpx8";
 
   func getCurrentMonthYear() : Text {
     let now = Time.now();
@@ -109,10 +82,9 @@ actor {
     year.toText() # "-" # (if (month < 10) { "0" } else { "" }) # Int.abs(month).toText();
   };
 
-  // null plan = free tier: 1 photo, 0 videos
   func getPlanLimits(plan : ?SubscriptionPlan) : (Nat, Nat) {
     switch (plan) {
-      case (null)      { (1, 0) };
+      case (null)      { (9999, 9999) };
       case (?#Starter) { (8, 1) };
       case (?#Basic)   { (20, 2) };
       case (?#Growth)  { (50, 5) };
@@ -150,61 +122,47 @@ actor {
     };
   };
 
-
-  // ── Self Registration ────────────────────────────────────────
-  // Any authenticated user can call this to register themselves as a #user.
-  // Safe to call multiple times (idempotent).
   public shared ({ caller }) func selfRegister() : async () {
     if (caller.isAnonymous()) { Runtime.trap("Anonymous users cannot register") };
     switch (accessControlState.userRoles.get(caller)) {
-      case (?_) {}; // already registered, do nothing
+      case (?_) {};
       case (null) { accessControlState.userRoles.add(caller, #user) };
     };
   };
-  // ── User Profile ─────────────────────────────────────────────
+
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only users can view profiles");
+      Runtime.trap("Unauthorized");
     };
     userProfiles.get(caller);
   };
 
-  public query ({ caller }) func getUserProfile(user : Principal) : async ?UserProfile {
-    if (caller != user and not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Can only view your own profile");
-    };
-    userProfiles.get(user);
-  };
-
   public shared ({ caller }) func saveCallerUserProfile(profile : UserProfile) : async () {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only users can save profiles");
+      Runtime.trap("Unauthorized");
     };
     userProfiles.add(caller, profile);
   };
 
-  // ── Subscription ────────────────────────────────────────────
   public query ({ caller }) func getMySubscription() : async SubscriptionInfo {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only users can view subscriptions");
+      Runtime.trap("Unauthorized");
     };
-    let plan = userSubscriptions.get(caller);  // null = free tier
+    let plan = userSubscriptions.get(caller);
     let usage = getOrInitUsage(caller);
     let (photoLimit, videoLimit) = getPlanLimits(plan);
     { plan; photosUsed = usage.photosUsed; videosUsed = usage.videosUsed; photoLimit; videoLimit };
   };
 
-  // ── Razorpay Payment Claim ───────────────────────────────────
   public shared ({ caller }) func claimRazorpayPayment(paymentId : Text, planId : Text) : async () {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only users can claim payments");
+      Runtime.trap("Unauthorized");
     };
     switch (claimedPayments.get(paymentId)) {
       case (?existingUser) {
         if (existingUser != caller) {
           Runtime.trap("Payment already claimed by another user");
         };
-        // Same user re-claiming is idempotent
       };
       case null {
         switch (textToPlan(planId)) {
@@ -222,42 +180,39 @@ actor {
     };
   };
 
-  // Admin: manually assign a plan
   public shared ({ caller }) func setUserPlan(user : Principal, plan : SubscriptionPlan) : async () {
-    if (not (AccessControl.isAdmin(accessControlState, caller))) {
-      Runtime.trap("Unauthorized: Only admins can set user plans");
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized");
     };
     userSubscriptions.add(user, plan);
   };
 
-  // ── Usage Tracking ─────────────────────────────────────────────
   public shared ({ caller }) func recordPhotoUsage() : async () {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only users can record usage");
+      Runtime.trap("Unauthorized");
     };
     let usage = getOrInitUsage(caller);
     let plan = userSubscriptions.get(caller);
     let (photoLimit, _) = getPlanLimits(plan);
     if (usage.photosUsed >= photoLimit) {
-      Runtime.trap("Photo limit exceeded for current plan");
+      Runtime.trap("Photo limit exceeded");
     };
     userUsage.add(caller, { photosUsed = usage.photosUsed + 1; videosUsed = usage.videosUsed; monthYear = usage.monthYear });
   };
 
   public shared ({ caller }) func recordVideoUsage() : async () {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only users can record usage");
+      Runtime.trap("Unauthorized");
     };
     let usage = getOrInitUsage(caller);
     let plan = userSubscriptions.get(caller);
     let (_, videoLimit) = getPlanLimits(plan);
     if (usage.videosUsed >= videoLimit) {
-      Runtime.trap("Video limit exceeded for current plan");
+      Runtime.trap("Video limit exceeded");
     };
     userUsage.add(caller, { photosUsed = usage.photosUsed; videosUsed = usage.videosUsed + 1; monthYear = usage.monthYear });
   };
 
-  // Stripe integration stubs for compatibility
   public query func isStripeConfigured() : async Bool {
     switch (stripeConfiguration) {
       case (null) { false };
@@ -266,9 +221,8 @@ actor {
   };
 
   public shared ({ caller }) func setStripeConfiguration(config : Stripe.StripeConfiguration) : async () {
-    let isAdmin = AccessControl.isAdmin(accessControlState, caller);
-    if (not isAdmin) {
-      Runtime.trap("Unauthorized: Only admins can set Stripe configuration");
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized");
     };
     stripeConfiguration := ?config;
   };
@@ -287,15 +241,13 @@ actor {
     };
   };
 
-  // ── HTTP Transform Stub ─────────────────────────────────────────
   public query func transform(input : OutCall.TransformationInput) : async OutCall.TransformationOutput {
     OutCall.transform(input);
   };
 
-  // ── Design History ────────────────────────────────────────────
   public shared ({ caller }) func addDesign(roomType : Text, style : Text) : async () {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only users can add designs");
+      Runtime.trap("Unauthorized");
     };
     designs.add({ roomType; style; timestamp = Time.now() });
   };
@@ -308,26 +260,20 @@ actor {
     designs.toArray().sort(Design.compareByTimestamp);
   };
 
-  // ── Puter Token STABLE VAR ───────────────────────────────────
-  public query ({ caller }) func getPuterToken() : async ?Text {
-    if (not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Only admins can view Puter token");
-    };
+  public query func getPuterToken() : async ?Text {
     puterToken;
   };
 
   public shared ({ caller }) func setPuterToken(token : Text) : async () {
     if (not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Only admins can set Puter token");
+      Runtime.trap("Unauthorized");
     };
     puterToken := ?token;
   };
 
-  // ── Custom Theme Feature ───────────────────────────────────────
-
   public shared ({ caller }) func addCustomTheme(name : Text, prompt : Text) : async Text {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only users can add custom themes");
+      Runtime.trap("Unauthorized");
     };
     let themeId = Time.now().toText() # caller.hash().toText();
     let newTheme = {
@@ -347,7 +293,7 @@ actor {
 
   public query ({ caller }) func getMyCustomThemes() : async [CustomTheme] {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only users can view custom themes");
+      Runtime.trap("Unauthorized");
     };
     switch (userCustomThemes.get(caller)) {
       case (?themes) { themes };
@@ -357,9 +303,8 @@ actor {
 
   public shared ({ caller }) func deleteCustomTheme(themeId : Text) : async Bool {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only users can delete custom themes");
+      Runtime.trap("Unauthorized");
     };
-
     switch (userCustomThemes.get(caller)) {
       case (null) { false };
       case (?themes) {

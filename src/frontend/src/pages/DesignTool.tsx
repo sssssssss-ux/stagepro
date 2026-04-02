@@ -65,7 +65,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import BeforeAfterSlider from "../components/BeforeAfterSlider";
 import { useActor } from "../hooks/useActor";
-import { generateImageAiml, generateVideoAiml } from "../utils/aimlApi";
 
 interface DesignToolProps {
   onBack: () => void;
@@ -106,8 +105,8 @@ interface SubscriptionInfo {
   photoLimit: bigint;
 }
 
-const FREE_PHOTO_LIMIT = 1;
-const FREE_VIDEO_LIMIT = 0;
+const _FREE_PHOTO_LIMIT = 9999;
+const _FREE_VIDEO_LIMIT = 9999;
 const FREE_USAGE_KEY = "stagepro_free_usage";
 
 function getFreeUsage() {
@@ -666,6 +665,7 @@ export default function DesignTool({
   );
   const chatBottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const puterTokenRef = useRef<string | null>(null);
 
   const activeTool =
     ALL_TOOLS.find((t) => t.id === selectedTool) ?? ALL_TOOLS[0];
@@ -692,6 +692,29 @@ export default function DesignTool({
         });
     }
   }, [isAuthenticated, actor]);
+
+  // Initialize Puter token from backend canister (no login required)
+  useEffect(() => {
+    if (!actor) return;
+    (actor as any)
+      .getPuterToken()
+      .then((result: [] | [string]) => {
+        const token =
+          Array.isArray(result) && result.length > 0 ? result[0] : null;
+        if (token) {
+          puterTokenRef.current = token;
+          const puter = (window as any).puter;
+          if (puterTokenRef.current) {
+            puter.authToken = token;
+            // Permanently suppress any auth popups
+            if (puter.auth) {
+              puter.auth.signIn = () => Promise.resolve(null);
+            }
+          }
+        }
+      })
+      .catch(console.error);
+  }, [actor]);
 
   // Load custom themes when authenticated
   const loadCustomThemes = async () => {
@@ -776,30 +799,11 @@ export default function DesignTool({
   // Compute effective limits
   // While subscription is loading, use generous limits so the create button isn't blocked.
   // Once loaded, use the actual plan limits. If no subscription found, fall back to free limits.
-  const photoLimit =
-    isAuthenticated && subscriptionInfo
-      ? Number(subscriptionInfo.photoLimit)
-      : isAuthenticated && subscriptionLoading
-        ? 9999
-        : FREE_PHOTO_LIMIT;
-  const videoLimit =
-    isAuthenticated && subscriptionInfo
-      ? Number(subscriptionInfo.videoLimit)
-      : isAuthenticated && subscriptionLoading
-        ? 9999
-        : FREE_VIDEO_LIMIT;
-  const photosUsed =
-    isAuthenticated && subscriptionInfo
-      ? Number(subscriptionInfo.photosUsed)
-      : isAuthenticated && subscriptionLoading
-        ? 0
-        : freeUsage.photos;
-  const videosUsed =
-    isAuthenticated && subscriptionInfo
-      ? Number(subscriptionInfo.videosUsed)
-      : isAuthenticated && subscriptionLoading
-        ? 0
-        : freeUsage.videos;
+  // UNLIMITED MODE
+  const photoLimit = 9999;
+  const videoLimit = 9999;
+  const photosUsed = 0;
+  const videosUsed = 0;
 
   const photosRemaining = Math.max(0, photoLimit - photosUsed);
   const videosRemaining = Math.max(0, videoLimit - videosUsed);
@@ -969,14 +973,20 @@ export default function DesignTool({
     setIsGenerating(true);
     startProgress(true);
     try {
-      const videoUrl = await generateVideoAiml(
-        videoPrompt,
-        selectedDuration,
-        selectedResolution,
-      );
+      const puter = (window as any).puter;
+      if (!puter) throw new Error("Puter.js not loaded");
+      if (puterTokenRef.current) {
+        puter.authToken = puterTokenRef.current;
+      }
+      const videoEl = await puter.ai.txt2vid(videoPrompt, {
+        model: "sora-2",
+        seconds: selectedDuration,
+        size: selectedResolution,
+      });
       stopProgress();
       setProgress(100);
       setStatusMsg("Video ready!");
+      const videoUrl = videoEl.src || videoEl.currentSrc;
       const newVidGen: VideoGeneration = {
         id: crypto.randomUUID(),
         originalImageUrl: sourceImageUrl,
@@ -1012,6 +1022,12 @@ export default function DesignTool({
     }
     if (isGenerating) return;
 
+    // Require sign-in before any generation
+    if (!isAuthenticated) {
+      setShowUpgradeModal(true);
+      return;
+    }
+
     // Check photo limit
     if (photosRemaining <= 0) {
       setShowUpgradeModal(true);
@@ -1026,18 +1042,23 @@ export default function DesignTool({
       setIsGenerating(true);
       startProgress();
       try {
+        const puter = (window as any).puter;
+        if (!puter) throw new Error("Puter.js not loaded");
+        if (puterTokenRef.current) {
+          puter.authToken = puterTokenRef.current;
+        }
         const prompt = `STRICT INSTRUCTIONS (you MUST follow these exactly): ${instructions || "improve the overall look, keep structure identical"}. Refine this room design. Keep the overall layout and structure.`;
-        const generatedUrl = await generateImageAiml(
-          prompt,
-          target.generatedImageUrl,
-        );
+        const imageElement = await puter.ai.txt2img(prompt, {
+          model: "black-forest-labs/flux.1-kontext-pro",
+          image_url: target.generatedImageUrl,
+        });
         stopProgress();
         setProgress(100);
         setStatusMsg("Refinement complete!");
         const newGen: Generation = {
           id: crypto.randomUUID(),
           originalImageUrl: target.originalImageUrl,
-          generatedImageUrl: generatedUrl,
+          generatedImageUrl: imageElement.src,
           tool: target.tool,
           roomType: target.roomType,
           style: target.style,
@@ -1061,6 +1082,11 @@ export default function DesignTool({
       setIsGenerating(true);
       startProgress();
       try {
+        const puter = (window as any).puter;
+        if (!puter) throw new Error("Puter.js not loaded");
+        if (puterTokenRef.current) {
+          puter.authToken = puterTokenRef.current;
+        }
         const strictConstraints = instructions
           ? `STRICT INSTRUCTIONS (you MUST follow these exactly): ${instructions}. `
           : "";
@@ -1081,11 +1107,14 @@ export default function DesignTool({
 
         for (let i = 0; i < imagesToProcess.length; i++) {
           const imgUrl = imagesToProcess[i];
-          const generatedUrl = await generateImageAiml(prompt, imgUrl);
+          const imageElement = await puter.ai.txt2img(prompt, {
+            model: "black-forest-labs/flux.1-kontext-pro",
+            image_url: imgUrl,
+          });
           const newGen: Generation = {
             id: crypto.randomUUID(),
             originalImageUrl: imgUrl,
-            generatedImageUrl: generatedUrl,
+            generatedImageUrl: imageElement.src,
             tool: activeTool.label,
             roomType: selectedRoom,
             style: selectedCustomThemeId

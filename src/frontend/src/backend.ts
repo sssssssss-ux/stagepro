@@ -90,9 +90,89 @@ export class ExternalBlob {
     }
 }
 export interface backendInterface {
+  _initializeAccessControlWithSecret(secret: string): Promise<void>;
+  selfRegister(): Promise<void>;
+  getCallerUserProfile(): Promise<[] | [{ name: string }]>;
+  saveCallerUserProfile(profile: { name: string }): Promise<void>;
+  getMySubscription(): Promise<{
+    plan: [] | [{ Starter: null } | { Basic: null } | { Growth: null } | { Pro: null } | { Max: null }];
+    photosUsed: bigint;
+    videosUsed: bigint;
+    photoLimit: bigint;
+    videoLimit: bigint;
+  }>;
+  claimRazorpayPayment(paymentId: string, planId: string): Promise<void>;
+  recordPhotoUsage(): Promise<void>;
+  recordVideoUsage(): Promise<void>;
+  isStripeConfigured(): Promise<boolean>;
+  addDesign(roomType: string, style: string): Promise<void>;
+  getAllDesigns(): Promise<Array<{ roomType: string; style: string; timestamp: bigint }>>;
+  getDesignHistorySorted(): Promise<Array<{ roomType: string; style: string; timestamp: bigint }>>;
+  getPuterToken(): Promise<[] | [string]>;
+  setPuterToken(token: string): Promise<void>;
+  addCustomTheme(name: string, prompt: string): Promise<string>;
+  getMyCustomThemes(): Promise<Array<{ id: string; name: string; prompt: string; createdAt: bigint }>>;
+  deleteCustomTheme(themeId: string): Promise<boolean>;
 }
 export class Backend implements backendInterface {
     constructor(private actor: ActorSubclass<_SERVICE>, private _uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, private _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, private processError?: (error: unknown) => never){}
+    async _initializeAccessControlWithSecret(secret: string): Promise<void> {
+        return (this.actor as any)._initializeAccessControlWithSecret(secret);
+    }
+    async selfRegister(): Promise<void> {
+        return (this.actor as any).selfRegister();
+    }
+    async getCallerUserProfile(): Promise<[] | [{ name: string }]> {
+        return (this.actor as any).getCallerUserProfile();
+    }
+    async saveCallerUserProfile(profile: { name: string }): Promise<void> {
+        return (this.actor as any).saveCallerUserProfile(profile);
+    }
+    async getMySubscription(): Promise<{
+        plan: [] | [{ Starter: null } | { Basic: null } | { Growth: null } | { Pro: null } | { Max: null }];
+        photosUsed: bigint;
+        videosUsed: bigint;
+        photoLimit: bigint;
+        videoLimit: bigint;
+    }> {
+        return (this.actor as any).getMySubscription();
+    }
+    async claimRazorpayPayment(paymentId: string, planId: string): Promise<void> {
+        return (this.actor as any).claimRazorpayPayment(paymentId, planId);
+    }
+    async recordPhotoUsage(): Promise<void> {
+        return (this.actor as any).recordPhotoUsage();
+    }
+    async recordVideoUsage(): Promise<void> {
+        return (this.actor as any).recordVideoUsage();
+    }
+    async isStripeConfigured(): Promise<boolean> {
+        return (this.actor as any).isStripeConfigured();
+    }
+    async addDesign(roomType: string, style: string): Promise<void> {
+        return (this.actor as any).addDesign(roomType, style);
+    }
+    async getAllDesigns(): Promise<Array<{ roomType: string; style: string; timestamp: bigint }>> {
+        return (this.actor as any).getAllDesigns();
+    }
+    async getDesignHistorySorted(): Promise<Array<{ roomType: string; style: string; timestamp: bigint }>> {
+        return (this.actor as any).getDesignHistorySorted();
+    }
+    async getPuterToken(): Promise<[] | [string]> {
+        return (this.actor as any).getPuterToken();
+    }
+    async setPuterToken(token: string): Promise<void> {
+        return (this.actor as any).setPuterToken(token);
+    }
+    async addCustomTheme(name: string, prompt: string): Promise<string> {
+        return (this.actor as any).addCustomTheme(name, prompt);
+    }
+    async getMyCustomThemes(): Promise<Array<{ id: string; name: string; prompt: string; createdAt: bigint }>> {
+        return (this.actor as any).getMyCustomThemes();
+    }
+    async deleteCustomTheme(themeId: string): Promise<boolean> {
+        return (this.actor as any).deleteCustomTheme(themeId);
+    }
 }
 export interface CreateActorOptions {
     agent?: Agent;
